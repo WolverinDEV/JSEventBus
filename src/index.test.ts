@@ -1,12 +1,11 @@
 /* Compile tests */
 import {
-    AsyncEventBusSender,
     BusEvent,
     BusEventMap,
     EventBusReceiver,
     EventBusSender,
-    OrderedAsyncEventBusSender
 } from "./index";
+import {AsyncEventBusSender, OrderedAsyncEventBusSender} from "./bus/Async";
 
 interface TestEventMap {
     "event-a": {},

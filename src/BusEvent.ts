@@ -5,13 +5,23 @@ import {BusEvent, BusEventMap} from "./index";
  * @param payload
  */
 /* May inline this somehow? A function call seems to be 3% slower */
-export function createBusEvent<P extends BusEventMap<P>, T extends keyof P>(payload: T) : BusEvent<P, T> {
-    let event = payload as any as BusEvent<P, T>;
-    event.as = as;
-    event.asUnchecked = asUnchecked;
-    event.asAnyUnchecked = asUnchecked;
-    event.extractPayload = extractPayload;
-    return event;
+export function createBusEvent<P extends BusEventMap<P>, T extends keyof P>(type: T, payload?: P[T]) : BusEvent<P, T> {
+    if(payload) {
+        let event = payload as any as BusEvent<P, T>;
+        event.as = as;
+        event.asUnchecked = asUnchecked;
+        event.asAnyUnchecked = asUnchecked;
+        event.extractPayload = extractPayload;
+        return event;
+    } else {
+        return {
+            type,
+            as,
+            asUnchecked,
+            asAnyUnchecked: asUnchecked,
+            extractPayload
+        } as any;
+    }
 }
 
 function extractPayload() {

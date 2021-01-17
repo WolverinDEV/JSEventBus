@@ -1,10 +1,4 @@
-/*
-export interface Event<Events, T = keyof Events> {
-    readonly type: T;
-
-    as<T extends keyof Events>() : Events[T];
-}
-*/
+import { v4 as uuidv4 } from "uuid";
 
 export type BusEventPayloadObject = {
     [key: string]: BusEventPayload
@@ -35,6 +29,8 @@ export type BusEvent<P extends BusEventMap<P>, T extends keyof P> = {
 } & P[T];
 
 export interface EventBusSender<Events extends BusEventMap<Events> = BusEventMap<any>> {
+    destroy();
+
     /**
      * Fire an event synchronously.
      * After the method returns all subscribers have been invoked.
@@ -44,36 +40,9 @@ export interface EventBusSender<Events extends BusEventMap<Events> = BusEventMap
     fire<T extends keyof Events>(eventType: T, data?: Events[T]);
 }
 
-/**
- * Async event bus sender.
- * The order the events might get dispatched can be out of order!
- */
-export interface AsyncEventBusSender<Events extends BusEventMap<Events> = BusEventMap<any>> {
-    /**
-     * Fire an event asynchronously without blocking.
-     * @param eventType The target event to be fired
-     * @param data The payload of the event
-     * @param callback The callback will be called after the event has been successfully dispatched
-     */
-    fireAsync<T extends keyof Events>(eventType: T, data?: Events[T], callback?: () => void);
-
-    /**
-     * @returns true if the async events will be dispatched in order,
-     *          else false will be returned.
-     */
-    isOrdered() : boolean;
-}
-
-/**
- * Async event bus sender but with guaranteed async emit order.
- */
-export interface OrderedAsyncEventBusSender<Events extends BusEventMap<Events> = BusEventMap<any>>
-    extends AsyncEventBusSender<Events> {
-
-    isOrdered() : true;
-}
-
 export interface EventBusReceiver<Events extends BusEventMap<Events> = BusEventMap<any>> {
+    destroy();
+
     on<T extends keyof Events>(event: T | T[], handler: (event: BusEvent<Events, T>) => void) : () => void;
     one<T extends keyof Events>(event: T | T[], handler: (event: BusEvent<Events, T>) => void) : () => void;
 
@@ -82,9 +51,27 @@ export interface EventBusReceiver<Events extends BusEventMap<Events> = BusEventM
 
     onAll(handler: (event: BusEvent<Events, keyof Events>) => void) : () => void;
     offAll(handler: (event: BusEvent<Events, keyof Events>) => void);
+
+    registerHandler(handler: any, parentClasses?: boolean);
+    unregisterHandler(handler: any);
 }
 
+export const kEventAnnotationKey = uuidv4();
 
-export type EventBus<Events extends BusEventMap<Events>> = EventBusReceiver<Events> & EventBusSender<Events>;
-export type AsyncEventBus<Events extends BusEventMap<Events>> = EventBus<Events> & AsyncEventBusSender<Events>;
-export type OrderedAsyncEventBus<Events extends BusEventMap<Events>> = EventBus<Events> & OrderedAsyncEventBusSender<Events>;
+/**
+ * Annotation type for TypeScript.
+ * This type must be present if you're calling `registerHandler`
+ * @param events
+ * @constructor
+ */
+export function EventHandler<Events extends BusEventMap<Events> = BusEventMap<any>>(events: (keyof Events) | (keyof Events)[]) {
+    return function (target: any, propertyKey: string, _descriptor: PropertyDescriptor) {
+        if(typeof target[propertyKey] !== "function") {
+            throw "Invalid event handler annotation. Expected to be on a function type.";
+        }
+
+        target[propertyKey][kEventAnnotationKey] = {
+            events: Array.isArray(events) ? events : [ events ]
+        };
+    }
+}
